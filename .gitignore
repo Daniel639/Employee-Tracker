@@ -1,0 +1,41 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database Files
+*.sqlite
+*.db
+
+# Backup Files
+*.bak
+*.backup
+*.~sql
+
+# Log Files
+*.log
+
+# Configuration Files (if applicable)
+config.ini
+*.conf
+
+# Temporary Files
+*.tmp
+temp/
+
+# Data Files (if you have any sensitive data files)
+# *.csv
+# *.json
+
+# Compiled Files (if you use any)
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
