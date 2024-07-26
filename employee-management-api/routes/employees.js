@@ -1,70 +1,60 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../app');  // Updated import
-const fs = require('fs');
-const path = require('path');
-
-console.log('Employee routes module loaded');
-
-// Read SQL files
-const employeesByDepartmentSQL = fs.readFileSync(path.join(__dirname, '../db/queries/employees_by_department.sql'), 'utf8');
-const employeesWithManagerSQL = fs.readFileSync(path.join(__dirname, '../db/queries/employees_with_manager.sql'), 'utf8');
+const { pool } = require('../app');
 
 // Get all employees
 router.get('/', async (req, res) => {
-  console.log('GET request to /api/employees');
   try {
-    console.log('Attempting to fetch all employees');
-    const { rows } = await pool.query('SELECT * FROM employee');
-    console.log('Fetched employees:', rows);
+    const { rows } = await pool.query(`
+      SELECT 
+        e.id, 
+        e.first_name, 
+        e.last_name, 
+        r.title, 
+        d.name AS department, 
+        r.salary,
+        CONCAT(m.first_name, ' ', m.last_name) AS manager
+      FROM 
+        employee e
+      JOIN 
+        role r ON e.role_id = r.id
+      JOIN 
+        department d ON r.department_id = d.id
+      LEFT JOIN 
+        employee m ON e.manager_id = m.id
+    `);
     res.json(rows);
   } catch (err) {
     console.error('Error in GET /api/employees:', err);
-    console.error('Error stack:', err.stack);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: err.message,
-      stack: err.stack 
-    });
+    res.status(500).json({ error: 'Internal server error', message: err.message });
   }
 });
 
-// Get employees by department
-router.get('/by-department/:department', async (req, res) => {
-  console.log('GET request to /api/employees/by-department');
+// Add an employee
+router.post('/', async (req, res) => {
+  const { first_name, last_name, role_id, manager_id } = req.body;
   try {
-    const { department } = req.params;
-    console.log('Attempting to fetch employees by department:', department);
-    const { rows } = await pool.query(employeesByDepartmentSQL, [department]);
-    console.log('Fetched employees by department:', rows);
-    res.json(rows);
+    const { rows } = await pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4) RETURNING *', [first_name, last_name, role_id, manager_id]);
+    res.status(201).json(rows[0]);
   } catch (err) {
-    console.error('Error in GET /api/employees/by-department:', err);
-    console.error('Error stack:', err.stack);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: err.message,
-      stack: err.stack 
-    });
+    console.error('Error in POST /api/employees:', err);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
   }
 });
 
-// Get employees with manager
-router.get('/with-manager', async (req, res) => {
-  console.log('GET request to /api/employees/with-manager');
+// Update an employee's role
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { role_id } = req.body;
   try {
-    console.log('Attempting to fetch employees with manager');
-    const { rows } = await pool.query(employeesWithManagerSQL);
-    console.log('Fetched employees with manager:', rows);
-    res.json(rows);
+    const { rows } = await pool.query('UPDATE employee SET role_id = $1 WHERE id = $2 RETURNING *', [role_id, id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+    res.json(rows[0]);
   } catch (err) {
-    console.error('Error in GET /api/employees/with-manager:', err);
-    console.error('Error stack:', err.stack);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      message: err.message,
-      stack: err.stack 
-    });
+    console.error('Error in PUT /api/employees/:id:', err);
+    res.status(500).json({ error: 'Internal server error', message: err.message });
   }
 });
 
